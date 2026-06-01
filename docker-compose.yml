@@ -1,134 +1,39 @@
 services:
-  user-db:
+  db:
     image: postgres:16-alpine
-    container_name: ai-travel-user-db
+    container_name: ai-travel-db
     environment:
-      POSTGRES_DB: user_db
-      POSTGRES_USER: user_service
-      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-user_password}
+      POSTGRES_DB: ai_travel
+      POSTGRES_USER: ai_travel
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ai_travel_password}
     volumes:
-      - user_db_data:/var/lib/postgresql/data
+      - app_db_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_service -d user_db"]
+      test: ["CMD-SHELL", "pg_isready -U ai_travel -d ai_travel"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  travel-db:
-    image: postgres:16-alpine
-    container_name: ai-travel-travel-db
-    environment:
-      POSTGRES_DB: travel_db
-      POSTGRES_USER: travel_service
-      POSTGRES_PASSWORD: ${TRAVEL_DB_PASSWORD:-travel_password}
-    volumes:
-      - travel_db_data:/var/lib/postgresql/data
-    ports:
-      - "5434:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U travel_service -d travel_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  user-service:
+  backend:
     build:
-      context: ./services/user-service
-    container_name: ai-travel-user-service
+      context: ./backend
+    container_name: ai-travel-backend
     environment:
       ENVIRONMENT: ${ENVIRONMENT:-local}
-      DATABASE_URL: postgresql+psycopg://user_service:${USER_DB_PASSWORD:-user_password}@user-db:5432/user_db
+      DATABASE_URL: postgresql+psycopg://ai_travel:${DB_PASSWORD:-ai_travel_password}@db:5432/ai_travel
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-local-dev-secret}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
-    depends_on:
-      user-db:
-        condition: service_healthy
-    ports:
-      - "8011:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  travel-service:
-    build:
-      context: ./services/travel-service
-    container_name: ai-travel-travel-service
-    environment:
-      ENVIRONMENT: ${ENVIRONMENT:-local}
-      DATABASE_URL: postgresql+psycopg://travel_service:${TRAVEL_DB_PASSWORD:-travel_password}@travel-db:5432/travel_db
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-local-dev-secret}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
-    depends_on:
-      travel-db:
-        condition: service_healthy
-    ports:
-      - "8012:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  ai-service:
-    build:
-      context: ./services/ai-service
-    container_name: ai-travel-ai-service
-    environment:
-      ENVIRONMENT: ${ENVIRONMENT:-local}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-      GROQ_MODEL: llama-3.3-70b-versatile
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-local-dev-secret}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
-    ports:
-      - "8013:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  utility-service:
-    build:
-      context: ./services/utility-service
-    container_name: ai-travel-utility-service
-    environment:
-      ENVIRONMENT: ${ENVIRONMENT:-local}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
       OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
       GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-local-dev-secret}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
-    ports:
-      - "8014:8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  api-gateway:
-    build:
-      context: ./services/api-gateway
-    container_name: ai-travel-api-gateway
-    environment:
-      ENVIRONMENT: ${ENVIRONMENT:-local}
-      USER_SERVICE_URL: http://user-service:8000
-      TRAVEL_SERVICE_URL: http://travel-service:8000
-      AI_SERVICE_URL: http://ai-service:8000
-      UTILITY_SERVICE_URL: http://utility-service:8000
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
     depends_on:
-      user-service:
-        condition: service_healthy
-      travel-service:
-        condition: service_healthy
-      ai-service:
-        condition: service_healthy
-      utility-service:
+      db:
         condition: service_healthy
     ports:
       - "8080:8000"
@@ -145,7 +50,7 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
     container_name: ai-travel-frontend
     depends_on:
-      api-gateway:
+      backend:
         condition: service_healthy
     ports:
       - "5173:80"
@@ -156,5 +61,4 @@ services:
       retries: 5
 
 volumes:
-  user_db_data:
-  travel_db_data:
+  app_db_data:

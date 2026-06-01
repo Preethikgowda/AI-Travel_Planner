@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 
 import { api, TOKEN_STORAGE_KEY, USER_STORAGE_KEY } from "../api/client";
 import { AuthResponse, User } from "../types";
@@ -6,6 +6,7 @@ import { AuthResponse, User } from "../types";
 interface AuthContextValue {
   token: string | null;
   user: User | null;
+  isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -30,6 +31,7 @@ function readStoredUser(): User | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(() => localStorage.getItem(TOKEN_STORAGE_KEY));
   const [user, setUserState] = useState<User | null>(() => readStoredUser());
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const persistAuth = (payload: AuthResponse) => {
     localStorage.setItem(TOKEN_STORAGE_KEY, payload.access_token);
@@ -38,10 +40,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserState(payload.user);
   };
 
+  const clearAuth = () => {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    setTokenState(null);
+    setUserState(null);
+  };
+
+  useEffect(() => {
+    async function validateStoredSession() {
+      const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!storedToken) {
+        clearAuth();
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        const { data } = await api.get<User>("/users/profile");
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data));
+        setTokenState(storedToken);
+        setUserState(data);
+      } catch {
+        clearAuth();
+      } finally {
+        setIsInitializing(false);
+      }
+    }
+
+    validateStoredSession();
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
       user,
+      isInitializing,
       login: async (email: string, password: string) => {
         const { data } = await api.post<AuthResponse>("/auth/login", { email, password });
         persistAuth(data);
@@ -51,17 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         persistAuth(data);
       },
       logout: () => {
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        localStorage.removeItem(USER_STORAGE_KEY);
-        setTokenState(null);
-        setUserState(null);
+        clearAuth();
       },
       setUser: (nextUser: User) => {
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
         setUserState(nextUser);
       }
     }),
-    [token, user]
+    [isInitializing, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

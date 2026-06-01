@@ -8,8 +8,8 @@ Use these files only as templates:
 
 - `.env.example`
 - `.env.production.example`
-- `services/*/.env.example`
-- `services/*/.env.production.example`
+- `backend/.env.example`
+- `backend/.env.production.example`
 
 Production secrets should be stored in AWS Secrets Manager or another managed secret store.
 

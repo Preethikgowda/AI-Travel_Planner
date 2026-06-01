@@ -1,6 +1,6 @@
 # AI Travel Planner API
 
-All application traffic should enter through the API gateway at `http://localhost:8080/api`.
+All application traffic enters through the monolith backend at `http://localhost:8080/api`.
 
 ## Authentication
 
@@ -18,7 +18,7 @@ Request:
 {
   "name": "Asha Rao",
   "email": "asha@example.com",
-  "password": "StrongPass123"
+  "password": "replace-with-user-password"
 }
 ```
 
@@ -44,13 +44,13 @@ Request:
 ```json
 {
   "email": "asha@example.com",
-  "password": "StrongPass123"
+  "password": "replace-with-user-password"
 }
 ```
 
 Response shape matches register.
 
-## User Service
+## Users
 
 ### GET `/api/users/profile`
 
@@ -83,7 +83,7 @@ Request:
 }
 ```
 
-## Travel Service
+## Trips and Expenses
 
 ### POST `/api/trips`
 
@@ -146,7 +146,7 @@ Returns expenses for a trip owned by the authenticated user.
 
 Returns trips sorted by most recent first.
 
-## AI Service
+## AI
 
 ### POST `/api/ai/itinerary`
 
@@ -229,7 +229,7 @@ Request:
 }
 ```
 
-## Utility Service
+## Utility
 
 ### GET `/api/weather/{city}`
 

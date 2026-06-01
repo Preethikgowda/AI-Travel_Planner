@@ -1,15 +1,12 @@
 # AWS Deployment Guide
 
-This repo is prepared for this AWS shape:
+This repo now uses a 3-tier monolith shape:
 
-- React frontend: S3 + CloudFront
-- Backend containers: ECS Fargate
-- Public API entrypoint: Application Load Balancer -> `api-gateway`
-- Internal services: ECS Service Connect or AWS Cloud Map
-- Databases: Amazon RDS PostgreSQL
-- Secrets: AWS Secrets Manager
+- Presentation tier: React frontend on S3 + CloudFront
+- Application tier: one FastAPI backend container on ECS Fargate
+- Data tier: one Amazon RDS PostgreSQL database
 
-Only `api-gateway` should be public. `user-service`, `travel-service`, `ai-service`, `utility-service`, and RDS should run in private networking.
+Only the backend is exposed through an Application Load Balancer. RDS should remain private.
 
 ## 1. Generate Production Secrets
 
@@ -19,27 +16,25 @@ From the repo root:
 .\scripts\generate-production-secrets.ps1
 ```
 
-Store the generated values in AWS Secrets Manager. Use the same `JWT_SECRET_KEY` for `user-service`, `travel-service`, `ai-service`, and `utility-service`.
+Store the generated values in AWS Secrets Manager.
 
 ## 2. Create RDS
 
-Create PostgreSQL on RDS and create two databases:
+Create one PostgreSQL RDS instance and one database:
 
 ```text
-user_db
-travel_db
+ai_travel
 ```
 
-Create service users or use one managed username with two database URLs:
+Create a database URL:
 
 ```text
-postgresql+psycopg://user_service:<password>@<rds-endpoint>:5432/user_db
-postgresql+psycopg://travel_service:<password>@<rds-endpoint>:5432/travel_db
+postgresql+psycopg://ai_travel:<password>@<rds-endpoint>:5432/ai_travel
 ```
 
-Save both URLs as Secrets Manager secrets.
+Save it in Secrets Manager as the backend `DATABASE_URL`.
 
-## 3. Build and Push Backend Images
+## 3. Build and Push Backend Image
 
 Install and configure AWS CLI, then run:
 
@@ -47,21 +42,21 @@ Install and configure AWS CLI, then run:
 .\scripts\build-and-push-ecr.ps1 -AwsAccountId "<account-id>" -AwsRegion "us-east-1"
 ```
 
-This builds and pushes:
+This builds and pushes one image:
 
 ```text
-ai-travel-api-gateway
-ai-travel-user-service
-ai-travel-travel-service
-ai-travel-ai-service
-ai-travel-utility-service
+ai-travel-backend
 ```
 
-## 4. Register ECS Task Definitions
+## 4. Register ECS Task Definition
 
-Use the JSON templates in `deploy/aws/task-definitions`.
+Open:
 
-Before registering them, replace:
+```text
+deploy/aws/task-definitions/backend.json
+```
+
+Replace:
 
 ```text
 <account-id>
@@ -72,36 +67,21 @@ Before registering them, replace:
 https://app.example.com
 ```
 
-Then register each task definition:
+Then register it:
 
 ```powershell
-aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/user-service.json
-aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/travel-service.json
-aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/ai-service.json
-aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/utility-service.json
-aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/api-gateway.json
+aws ecs register-task-definition --cli-input-json file://deploy/aws/task-definitions/backend.json
 ```
 
-## 5. Create ECS Services
+## 5. Create ECS Backend Service
 
-Create services in this order:
-
-1. `user-service`
-2. `travel-service`
-3. `ai-service`
-4. `utility-service`
-5. `api-gateway`
-
-Use ECS Service Connect or Cloud Map names matching the gateway template:
+Create one Fargate service:
 
 ```text
-user-service.ai-travel.local
-travel-service.ai-travel.local
-ai-service.ai-travel.local
-utility-service.ai-travel.local
+ai-travel-backend
 ```
 
-Attach only `api-gateway` to a public Application Load Balancer target group. The other services should be internal only.
+Attach it to a public Application Load Balancer target group on container port `8000`.
 
 ## 6. Build and Upload Frontend
 
@@ -142,14 +122,3 @@ https://app.example.com
 ```
 
 Then test registration, login, trip creation, trip history, AI assistant, weather, hotels, and places.
-
-## Production Guards Added
-
-When `ENVIRONMENT=production`, backend services now reject unsafe settings:
-
-- placeholder or short `JWT_SECRET_KEY`
-- localhost database URLs
-- localhost CORS origins
-- localhost upstream service URLs in the API gateway
-
-This prevents accidental deployment with local development settings.

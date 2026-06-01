@@ -1,18 +1,19 @@
 import { FormEvent, useState } from "react";
+import axios from "axios";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { LogIn, Plane } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
-  const { login, token } = useAuth();
+  const { isInitializing, login, token } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("StrongPass123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (token) {
+  if (!isInitializing && token) {
     return <Navigate to="/" replace />;
   }
 
@@ -23,8 +24,9 @@ export default function Login() {
     try {
       await login(email, password);
       navigate("/", { replace: true });
-    } catch {
-      setError("Login failed. Check your email and password.");
+    } catch (error) {
+      const detail = axios.isAxiosError(error) ? error.response?.data?.detail : undefined;
+      setError(typeof detail === "string" ? detail : "Login failed. Check your email and password.");
     } finally {
       setLoading(false);
     }

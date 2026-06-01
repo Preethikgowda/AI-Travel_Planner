@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import axios from "axios";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Plane, UserPlus } from "lucide-react";
 
@@ -7,9 +8,9 @@ import { useAuth } from "../context/AuthContext";
 export default function Register() {
   const { register, token } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState("Demo Traveler");
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("StrongPass123");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -24,8 +25,9 @@ export default function Register() {
     try {
       await register(name, email, password);
       navigate("/", { replace: true });
-    } catch {
-      setError("Registration failed. Use a different email or stronger password.");
+    } catch (error) {
+      const detail = axios.isAxiosError(error) ? error.response?.data?.detail : undefined;
+      setError(typeof detail === "string" ? detail : "Registration failed. Use a different email or stronger password.");
     } finally {
       setLoading(false);
     }

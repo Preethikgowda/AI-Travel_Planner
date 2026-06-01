@@ -15,5 +15,4 @@ function New-Secret {
 }
 
 Write-Output "JWT_SECRET_KEY=$(New-Secret -Bytes 64)"
-Write-Output "USER_DB_PASSWORD=$(New-Secret -Bytes 32)"
-Write-Output "TRAVEL_DB_PASSWORD=$(New-Secret -Bytes 32)"
+Write-Output "DB_PASSWORD=$(New-Secret -Bytes 32)"

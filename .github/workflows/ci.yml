@@ -43,8 +43,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Compile Python services
-        run: python -m compileall services
+      - name: Compile backend
+        run: python -m compileall backend
 
   compose:
     name: Docker Compose config

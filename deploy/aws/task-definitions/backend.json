@@ -1,0 +1,88 @@
+{
+  "family": "ai-travel-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "<ecs-task-execution-role-arn>",
+  "taskRoleArn": "<ecs-task-role-arn>",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<account-id>.dkr.ecr.<region>.amazonaws.com/ai-travel-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        },
+        {
+          "name": "JWT_ALGORITHM",
+          "value": "HS256"
+        },
+        {
+          "name": "ACCESS_TOKEN_EXPIRE_MINUTES",
+          "value": "1440"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "https://app.example.com"
+        },
+        {
+          "name": "GROQ_MODEL",
+          "value": "llama-3.3-70b-versatile"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "<secrets-manager-database-url-arn>"
+        },
+        {
+          "name": "JWT_SECRET_KEY",
+          "valueFrom": "<secrets-manager-jwt-secret-key-arn>"
+        },
+        {
+          "name": "GROQ_API_KEY",
+          "valueFrom": "<secrets-manager-groq-api-key-arn>"
+        },
+        {
+          "name": "OPENWEATHER_API_KEY",
+          "valueFrom": "<secrets-manager-openweather-api-key-arn>"
+        },
+        {
+          "name": "GEOAPIFY_API_KEY",
+          "valueFrom": "<secrets-manager-geoapify-api-key-arn>"
+        },
+        {
+          "name": "GOOGLE_MAPS_API_KEY",
+          "valueFrom": "<secrets-manager-google-maps-api-key-arn>"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()\""
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ai-travel/backend",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -28,7 +28,7 @@ npm run build
 Then from the repo root:
 
 ```bash
-python -m compileall services
+python -m compileall backend
 docker compose config --quiet
 ```
 
