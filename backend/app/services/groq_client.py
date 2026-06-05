@@ -36,10 +36,12 @@ class TravelAIService:
             )
         }
         prompt = (
-            "You are a concise AI travel assistant. Return strict JSON with one key: answer. "
+            "You are a concise AI travel assistant. Return strict JSON with exactly one key: answer. "
+            "The answer value must be one helpful plain-text string, not an object or array. "
             f"Answer this traveler question with actionable advice: {payload.question}"
         )
-        return await self._complete_json(prompt, fallback)
+        generated = await self._complete_json(prompt, fallback)
+        return self._normalize_chat(generated, fallback)
 
     async def optimize_budget(self, payload: BudgetOptimizerRequest) -> dict[str, Any]:
         daily = self._money(payload.budget / payload.days)
@@ -272,6 +274,40 @@ class TravelAIService:
             "activity_comparison": as_string_map(generated.get("activity_comparison"), fallback["activity_comparison"]),
             "best_choice": str(generated.get("best_choice") or fallback["best_choice"]),
         }
+
+    @staticmethod
+    def _normalize_chat(generated: dict[str, Any], fallback: dict[str, Any]) -> dict[str, str]:
+        answer = generated.get("answer")
+        if answer is None:
+            answer = generated
+
+        if isinstance(answer, str):
+            cleaned = answer.strip()
+        else:
+            cleaned = TravelAIService._stringify_ai_value(answer).strip()
+
+        return {"answer": cleaned or fallback["answer"]}
+
+    @staticmethod
+    def _stringify_ai_value(value: Any) -> str:
+        if isinstance(value, dict):
+            lines = []
+            for key, item in value.items():
+                label = str(key).replace("_", " ").title()
+                if isinstance(item, list):
+                    rendered = "; ".join(TravelAIService._stringify_ai_value(entry) for entry in item)
+                elif isinstance(item, dict):
+                    rendered = ", ".join(
+                        f"{str(child_key).replace('_', ' ').title()}: {TravelAIService._stringify_ai_value(child_value)}"
+                        for child_key, child_value in item.items()
+                    )
+                else:
+                    rendered = str(item)
+                lines.append(f"{label}: {rendered}")
+            return "\n".join(lines)
+        if isinstance(value, list):
+            return "\n".join(f"- {TravelAIService._stringify_ai_value(item)}" for item in value)
+        return str(value)
 
     @staticmethod
     def _normalize_packing_list(generated: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:

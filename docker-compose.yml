@@ -47,7 +47,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080/api}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: ai-travel-frontend
     depends_on:
       backend:

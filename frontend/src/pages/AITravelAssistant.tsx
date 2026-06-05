@@ -1,4 +1,5 @@
 import { FormEvent, useRef, useState } from "react";
+import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
 import { Bot, Send } from "lucide-react";
 
@@ -22,8 +23,13 @@ export default function AITravelAssistant() {
       setMessages((current) => [...current, { role: "assistant", content: data.answer }]);
       inputRef.current?.focus();
     },
-    onError: () => {
-      setMessages((current) => [...current, { role: "assistant", content: "I could not answer that request. Try again with a shorter question." }]);
+    onError: (error) => {
+      const detail = axios.isAxiosError(error) ? error.response?.data?.detail : undefined;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : "I could not reach the travel assistant service. Check that the backend is running on port 8080.";
+      setMessages((current) => [...current, { role: "assistant", content: message }]);
     }
   });
 
@@ -31,6 +37,15 @@ export default function AITravelAssistant() {
     event.preventDefault();
     const trimmed = question.trim();
     if (!trimmed) {
+      return;
+    }
+    if (trimmed.length < 3) {
+      setMessages((current) => [
+        ...current,
+        { role: "user", content: trimmed },
+        { role: "assistant", content: "Please enter at least 3 characters." }
+      ]);
+      setQuestion("");
       return;
     }
     setMessages((current) => [...current, { role: "user", content: trimmed }]);
@@ -48,7 +63,7 @@ export default function AITravelAssistant() {
             <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={[
-                  "max-w-3xl rounded-lg px-4 py-3 text-sm leading-6",
+                  "max-w-3xl whitespace-pre-line rounded-lg px-4 py-3 text-sm leading-6",
                   message.role === "user" ? "bg-teal-700 text-white" : "bg-zinc-100 text-zinc-800"
                 ].join(" ")}
               >
@@ -72,6 +87,7 @@ export default function AITravelAssistant() {
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Ask about routes, budgets, hotels, packing, or weather"
+            minLength={3}
           />
           <button type="submit" className="primary-button px-3" disabled={mutation.isPending || !question.trim()} aria-label="Send message">
             <Send className="h-4 w-4" aria-hidden="true" />

@@ -101,8 +101,9 @@ More feature details are in [docs/FEATURES.md](docs/FEATURES.md).
 ```text
 Browser
   -> React frontend served on localhost:5173
-  -> Axios API client using VITE_API_BASE_URL
-  -> FastAPI backend on localhost:8080/api
+  -> Axios API client using VITE_API_BASE_URL=/api
+  -> Nginx /api proxy in the frontend container
+  -> FastAPI backend on backend:8000/api
   -> route handler
   -> service/repository layer
   -> PostgreSQL database or external provider
@@ -141,7 +142,7 @@ JWT_SECRET_KEY=replace-with-a-long-random-secret-before-production
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 CORS_ORIGINS=http://localhost:5173,http://localhost:8080
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_API_BASE_URL=/api
 GROQ_API_KEY=
 OPENWEATHER_API_KEY=
 GEOAPIFY_API_KEY=
@@ -203,8 +204,10 @@ docker compose run --rm backend alembic upgrade head
 All frontend calls use:
 
 ```text
-http://localhost:8080/api
+/api
 ```
+
+In Docker, the frontend Nginx container proxies `/api/*` to the backend container. For direct backend testing, use `http://localhost:8080/api`.
 
 Main route groups:
 
