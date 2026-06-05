@@ -8,6 +8,7 @@ The project uses a simple 3-tier architecture:
 Presentation tier: React frontend
 Application tier: FastAPI backend monolith
 Data tier: PostgreSQL
+Object storage: Amazon S3 with SSE-KMS for private documents
 ```
 
 Local Docker Compose services:
@@ -106,7 +107,11 @@ Relationships:
 users 1 -> 1 preferences
 users 1 -> many trips
 trips 1 -> many expenses
+trips 1 -> many travel_documents
+users 1 -> many travel_documents
 ```
+
+File objects are not stored in PostgreSQL. PostgreSQL stores document metadata and S3 stores the encrypted object.
 
 ## Request Flow
 
@@ -165,6 +170,31 @@ Dashboard or utility page
   -> local fallback when key is absent
 ```
 
+### Trip Document Upload
+
+```text
+TripDocuments.tsx
+  -> POST /api/trips/{trip_id}/documents/presign-upload
+  -> backend checks JWT and trip ownership
+  -> backend creates pending document metadata
+  -> backend returns short-lived S3 PUT URL with SSE-KMS headers
+  -> browser uploads directly to S3
+  -> POST /api/trips/{trip_id}/documents/{document_id}/complete
+  -> backend verifies S3 object size and KMS encryption
+  -> document becomes available
+```
+
+### Chat Attachment Upload
+
+```text
+AITravelAssistant.tsx
+  -> POST /api/documents/chat/presign-upload
+  -> browser uploads directly to S3
+  -> POST /api/documents/chat/{document_id}/complete
+  -> POST /api/ai/chat with document_ids
+  -> backend verifies owner and passes file metadata to TravelAIService
+```
+
 ## Deployment Shape
 
 Recommended AWS production shape:
@@ -173,6 +203,7 @@ Recommended AWS production shape:
 CloudFront + S3 -> React frontend
 Application Load Balancer -> ECS Fargate backend
 ECS backend -> RDS PostgreSQL
+ECS backend -> private S3 document bucket encrypted with KMS
 Secrets Manager -> backend secrets
 ```
 

@@ -64,6 +64,35 @@ export interface ItineraryResponse {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  attachments?: TravelDocument[];
+}
+
+export interface TravelDocument {
+  id: string;
+  user_id: string;
+  trip_id: string | null;
+  document_scope: "trip" | "chat";
+  document_type: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number;
+  checksum_sha256: string | null;
+  s3_bucket: string;
+  s3_key: string;
+  kms_key_id: string;
+  status: string;
+  created_at: string;
+  uploaded_at: string | null;
+  deleted_at: string | null;
+}
+
+export interface PresignedUploadResponse {
+  document: TravelDocument;
+  upload_url: string;
+  method: "PUT";
+  headers: Record<string, string>;
+  expires_at: string;
+  max_size_bytes: number;
 }
 
 export interface DestinationComparison {

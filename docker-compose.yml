@@ -32,6 +32,12 @@ services:
       OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-}
       GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:-}
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      S3_DOCUMENT_BUCKET: ${S3_DOCUMENT_BUCKET:-}
+      S3_DOCUMENT_KMS_KEY_ID: ${S3_DOCUMENT_KMS_KEY_ID:-}
+      S3_PRESIGNED_URL_EXPIRES_SECONDS: ${S3_PRESIGNED_URL_EXPIRES_SECONDS:-900}
+      S3_MAX_UPLOAD_BYTES: ${S3_MAX_UPLOAD_BYTES:-10485760}
+      S3_ALLOWED_CONTENT_TYPES: ${S3_ALLOWED_CONTENT_TYPES:-application/pdf,image/jpeg,image/png,image/webp,text/plain,text/markdown,application/json,text/csv}
     depends_on:
       db:
         condition: service_healthy

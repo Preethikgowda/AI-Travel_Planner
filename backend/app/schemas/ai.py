@@ -27,6 +27,7 @@ class ItineraryResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1200)
+    document_ids: list[str] = Field(default_factory=list, max_length=5)
 
 
 class ChatResponse(BaseModel):

@@ -146,6 +146,97 @@ Returns expenses for a trip owned by the authenticated user.
 
 Returns trips sorted by most recent first.
 
+## Documents
+
+Documents are uploaded directly from the browser to S3 with backend-generated presigned URLs. The backend stores only metadata and verifies the S3 object before marking it available.
+
+### POST `/api/trips/{trip_id}/documents/presign-upload`
+
+Request:
+
+```json
+{
+  "file_name": "flight-ticket.pdf",
+  "content_type": "application/pdf",
+  "size_bytes": 245760,
+  "document_type": "flight_ticket"
+}
+```
+
+Response:
+
+```json
+{
+  "document": {
+    "id": "uuid",
+    "user_id": "uuid",
+    "trip_id": "uuid",
+    "document_scope": "trip",
+    "document_type": "flight_ticket",
+    "file_name": "flight-ticket.pdf",
+    "content_type": "application/pdf",
+    "size_bytes": 245760,
+    "checksum_sha256": null,
+    "s3_bucket": "ai-travel-planner-prod-documents",
+    "s3_key": "users/user-id/trips/trip-id/documents/document-id/flight-ticket.pdf",
+    "kms_key_id": "arn:aws:kms:us-east-1:123456789012:key/key-id",
+    "status": "pending",
+    "created_at": "2026-06-06T00:00:00Z",
+    "uploaded_at": null,
+    "deleted_at": null
+  },
+  "upload_url": "https://s3-presigned-put-url",
+  "method": "PUT",
+  "headers": {
+    "Content-Type": "application/pdf",
+    "x-amz-server-side-encryption": "aws:kms",
+    "x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:us-east-1:123456789012:key/key-id"
+  },
+  "expires_at": "2026-06-06T00:15:00Z",
+  "max_size_bytes": 10485760
+}
+```
+
+The frontend must upload the file to `upload_url` with the returned headers.
+
+### POST `/api/trips/{trip_id}/documents/{document_id}/complete`
+
+Marks a document available after the backend verifies the S3 object exists, has the expected size, and uses SSE-KMS.
+
+Request:
+
+```json
+{}
+```
+
+### GET `/api/trips/{trip_id}/documents`
+
+Returns available documents for a trip owned by the authenticated user.
+
+### GET `/api/trips/{trip_id}/documents/{document_id}/download-url`
+
+Returns a short-lived private S3 download URL.
+
+### DELETE `/api/trips/{trip_id}/documents/{document_id}`
+
+Soft-deletes the document metadata and deletes the S3 object.
+
+### POST `/api/documents/chat/presign-upload`
+
+Same request shape as trip upload, but creates a standalone chat attachment with `document_scope` set to `chat`.
+
+### POST `/api/documents/chat/{document_id}/complete`
+
+Completes a chat attachment upload.
+
+### GET `/api/documents/chat`
+
+Returns available chat attachments for the authenticated user.
+
+### DELETE `/api/documents/chat/{document_id}`
+
+Deletes a chat attachment.
+
 ## AI
 
 ### POST `/api/ai/itinerary`
@@ -191,7 +282,8 @@ Request:
 
 ```json
 {
-  "question": "What should I do in Kyoto when it rains?"
+  "question": "What should I do in Kyoto when it rains?",
+  "document_ids": ["uploaded-chat-document-uuid"]
 }
 ```
 

@@ -1,9 +1,11 @@
 from decimal import Decimal
 
+from datetime import datetime, timezone
+
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.models.travel import Expense, Trip
+from app.models.travel import Expense, TravelDocument, Trip
 from app.schemas.travel import TripCreate, TripUpdate
 
 
@@ -65,6 +67,103 @@ class TravelRepository:
             select(func.coalesce(func.sum(Expense.amount), 0)).join(Trip).where(Trip.user_id == user_id)
         )
         return Decimal(total or 0)
+
+    def create_document(
+        self,
+        *,
+        document_id: str,
+        user_id: str,
+        trip_id: str | None,
+        document_scope: str,
+        document_type: str,
+        file_name: str,
+        content_type: str,
+        size_bytes: int,
+        checksum_sha256: str | None,
+        s3_bucket: str,
+        s3_key: str,
+        kms_key_id: str,
+    ) -> TravelDocument:
+        document = TravelDocument(
+            id=document_id,
+            user_id=user_id,
+            trip_id=trip_id,
+            document_scope=document_scope,
+            document_type=document_type,
+            file_name=file_name,
+            content_type=content_type,
+            size_bytes=size_bytes,
+            checksum_sha256=checksum_sha256,
+            s3_bucket=s3_bucket,
+            s3_key=s3_key,
+            kms_key_id=kms_key_id,
+            status="pending",
+        )
+        self.db.add(document)
+        self.db.commit()
+        self.db.refresh(document)
+        return document
+
+    def list_documents(self, user_id: str, document_scope: str, trip_id: str | None = None) -> list[TravelDocument]:
+        query = select(TravelDocument).where(
+            TravelDocument.user_id == user_id,
+            TravelDocument.document_scope == document_scope,
+            TravelDocument.status == "available",
+        )
+        if trip_id is not None:
+            query = query.where(TravelDocument.trip_id == trip_id)
+        return list(self.db.scalars(query.order_by(desc(TravelDocument.created_at))))
+
+    def get_document(
+        self,
+        document_id: str,
+        user_id: str,
+        document_scope: str | None = None,
+        trip_id: str | None = None,
+        include_deleted: bool = False,
+    ) -> TravelDocument | None:
+        query = select(TravelDocument).where(TravelDocument.id == document_id, TravelDocument.user_id == user_id)
+        if document_scope is not None:
+            query = query.where(TravelDocument.document_scope == document_scope)
+        if trip_id is not None:
+            query = query.where(TravelDocument.trip_id == trip_id)
+        if not include_deleted:
+            query = query.where(TravelDocument.status != "deleted")
+        return self.db.scalar(query)
+
+    def list_documents_by_ids(self, user_id: str, document_ids: list[str], document_scope: str) -> list[TravelDocument]:
+        if not document_ids:
+            return []
+        return list(
+            self.db.scalars(
+                select(TravelDocument).where(
+                    TravelDocument.user_id == user_id,
+                    TravelDocument.document_scope == document_scope,
+                    TravelDocument.id.in_(document_ids),
+                    TravelDocument.status == "available",
+                )
+            )
+        )
+
+    def mark_document_available(self, document: TravelDocument, checksum_sha256: str | None = None) -> TravelDocument:
+        document.status = "available"
+        document.uploaded_at = datetime.now(timezone.utc)
+        if checksum_sha256:
+            document.checksum_sha256 = checksum_sha256
+        self.db.commit()
+        self.db.refresh(document)
+        return document
+
+    def soft_delete_document(self, document: TravelDocument) -> TravelDocument:
+        document.status = "deleted"
+        document.deleted_at = datetime.now(timezone.utc)
+        self.db.commit()
+        self.db.refresh(document)
+        return document
+
+    def hard_delete_document(self, document: TravelDocument) -> None:
+        self.db.delete(document)
+        self.db.commit()
 
     @staticmethod
     def _normalize_interests(interests: list[str]) -> list[str]:

@@ -1,5 +1,6 @@
 import {
   Bot,
+  FileText,
   GitCompare,
   History,
   LayoutDashboard,
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/create-trip", label: "Create Trip", icon: PlusCircle },
   { to: "/history", label: "Trip History", icon: History },
+  { to: "/documents", label: "Documents", icon: FileText },
   { to: "/expenses", label: "Expenses", icon: WalletCards },
   { to: "/assistant", label: "AI Assistant", icon: Bot },
   { to: "/compare", label: "Compare", icon: GitCompare },

@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     geoapify_api_key: str = ""
     google_maps_api_key: str = ""
     request_timeout_seconds: float = 20.0
+    aws_region: str = "us-east-1"
+    s3_document_bucket: str = ""
+    s3_document_kms_key_id: str = ""
+    s3_presigned_url_expires_seconds: int = 900
+    s3_max_upload_bytes: int = 10 * 1024 * 1024
+    s3_allowed_content_types: str = (
+        "application/pdf,image/jpeg,image/png,image/webp,text/plain,text/markdown,"
+        "application/json,text/csv"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -39,6 +48,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() in PRODUCTION_ENVIRONMENTS
+
+    @property
+    def s3_allowed_content_type_list(self) -> set[str]:
+        return {content_type.strip().lower() for content_type in self.s3_allowed_content_types.split(",") if content_type.strip()}
 
     @model_validator(mode="after")
     def validate_production_settings(self):
@@ -53,6 +66,12 @@ class Settings(BaseSettings):
 
         if any(value in origin for origin in self.cors_origin_list for value in LOCAL_ONLY_VALUES):
             raise ValueError("CORS_ORIGINS must contain only production origins when ENVIRONMENT=production")
+
+        if not self.s3_document_bucket:
+            raise ValueError("S3_DOCUMENT_BUCKET is required when ENVIRONMENT=production")
+
+        if not self.s3_document_kms_key_id:
+            raise ValueError("S3_DOCUMENT_KMS_KEY_ID is required when ENVIRONMENT=production")
 
         return self
 

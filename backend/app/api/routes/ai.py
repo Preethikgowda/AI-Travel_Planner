@@ -1,9 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.security import CurrentUser
+from app.db.session import get_db
+from app.repositories.travel_repository import TravelRepository
 from app.schemas.ai import (
     BudgetOptimizerRequest,
     BudgetOptimizerResponse,
@@ -34,8 +37,12 @@ async def itinerary(
 async def chat(
     payload: ChatRequest,
     current_user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ):
-    return await ai_service.chat(payload)
+    attachments = TravelRepository(db).list_documents_by_ids(current_user.id, payload.document_ids, "chat")
+    if len(attachments) != len(set(payload.document_ids)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="One or more chat attachments were not found")
+    return await ai_service.chat(payload, attachments)
 
 
 @router.post("/budget-optimizer", response_model=BudgetOptimizerResponse)

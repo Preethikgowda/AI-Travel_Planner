@@ -12,6 +12,7 @@ from app.schemas.ai import (
     ItineraryRequest,
     PackingListRequest,
 )
+from app.models.travel import TravelDocument
 
 
 class TravelAIService:
@@ -27,18 +28,23 @@ class TravelAIService:
         generated = await self._complete_json(prompt, fallback)
         return self._normalize_itinerary(generated, fallback)
 
-    async def chat(self, payload: ChatRequest) -> dict[str, Any]:
+    async def chat(self, payload: ChatRequest, attachments: list[TravelDocument] | None = None) -> dict[str, Any]:
+        attachment_context = self._attachment_context(attachments or [])
         fallback = {
             "answer": (
                 "A balanced travel plan should confirm dates, local transit, weather, reservations, "
                 "daily pacing, and a buffer for delays. For your question: "
                 f"{payload.question}"
+                f"{attachment_context}"
             )
         }
         prompt = (
             "You are a concise AI travel assistant. Return strict JSON with exactly one key: answer. "
             "The answer value must be one helpful plain-text string, not an object or array. "
+            "Uploaded files are private encrypted S3 objects; use only the provided file metadata and "
+            "do not claim to have read file contents. "
             f"Answer this traveler question with actionable advice: {payload.question}"
+            f"{attachment_context}"
         )
         generated = await self._complete_json(prompt, fallback)
         return self._normalize_chat(generated, fallback)
@@ -334,6 +340,16 @@ class TravelAIService:
             packing_list = fallback["packing_list"]
 
         return {"packing_list": packing_list or fallback["packing_list"]}
+
+    @staticmethod
+    def _attachment_context(attachments: list[TravelDocument]) -> str:
+        if not attachments:
+            return ""
+        rendered = "; ".join(
+            f"{document.file_name} ({document.document_type}, {document.content_type}, {document.size_bytes} bytes)"
+            for document in attachments
+        )
+        return f"\nAttached file metadata: {rendered}."
 
     @staticmethod
     def _money(value: Decimal) -> str:

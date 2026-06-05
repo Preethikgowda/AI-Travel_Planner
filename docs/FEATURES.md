@@ -101,6 +101,42 @@ GET /api/expenses/{trip_id}
 GET /api/trips/budget-summary
 ```
 
+## Trip Documents
+
+Users can upload private trip documents such as tickets, hotel bookings, visas, insurance, passport copies, receipts, and itineraries. The backend stores metadata in PostgreSQL and uses short-lived S3 presigned URLs for direct browser uploads and downloads.
+
+Production storage controls:
+
+- S3 bucket is private with public access blocked
+- objects are encrypted with SSE-KMS
+- uploads are limited by allowed content type and file size
+- document access is checked against the authenticated user and trip owner
+- deletes are soft-deleted in PostgreSQL and issue an S3 delete marker when bucket versioning is enabled
+
+Main endpoints:
+
+```text
+POST /api/trips/{trip_id}/documents/presign-upload
+POST /api/trips/{trip_id}/documents/{document_id}/complete
+GET /api/trips/{trip_id}/documents
+GET /api/trips/{trip_id}/documents/{document_id}/download-url
+DELETE /api/trips/{trip_id}/documents/{document_id}
+```
+
+## Chat Attachments
+
+The AI assistant supports encrypted file attachments. Files are uploaded through the same S3/KMS presigned flow and the chat request sends document IDs. The backend verifies ownership before passing safe file metadata to the AI service. File contents are not sent to the model by default.
+
+Main endpoints:
+
+```text
+POST /api/documents/chat/presign-upload
+POST /api/documents/chat/{document_id}/complete
+GET /api/documents/chat
+DELETE /api/documents/chat/{document_id}
+POST /api/ai/chat
+```
+
 ## Weather, Hotels, And Places
 
 The utility routes use external APIs when keys are configured:

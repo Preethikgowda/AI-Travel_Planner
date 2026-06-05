@@ -7,7 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.routes import ai, auth, expenses, trips, users, utility
+from app.api.routes import ai, auth, documents, expenses, trips, users, utility
 from app.core.config import settings
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
@@ -43,5 +43,6 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(trips.router, prefix="/api")
 app.include_router(expenses.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(utility.router, prefix="/api")

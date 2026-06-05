@@ -10,6 +10,7 @@ import ExpenseTracker from "./pages/ExpenseTracker";
 import Login from "./pages/Login";
 import PackingAssistant from "./pages/PackingAssistant";
 import Register from "./pages/Register";
+import TripDocuments from "./pages/TripDocuments";
 import TripHistory from "./pages/TripHistory";
 import UserProfile from "./pages/UserProfile";
 
@@ -23,6 +24,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="create-trip" element={<CreateTrip />} />
           <Route path="history" element={<TripHistory />} />
+          <Route path="documents" element={<TripDocuments />} />
           <Route path="expenses" element={<ExpenseTracker />} />
           <Route path="assistant" element={<AITravelAssistant />} />
           <Route path="compare" element={<DestinationComparison />} />

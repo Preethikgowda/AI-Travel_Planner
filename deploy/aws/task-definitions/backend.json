@@ -37,6 +37,26 @@
         {
           "name": "GROQ_MODEL",
           "value": "llama-3.3-70b-versatile"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "<region>"
+        },
+        {
+          "name": "S3_DOCUMENT_BUCKET",
+          "value": "ai-travel-planner-prod-documents"
+        },
+        {
+          "name": "S3_PRESIGNED_URL_EXPIRES_SECONDS",
+          "value": "900"
+        },
+        {
+          "name": "S3_MAX_UPLOAD_BYTES",
+          "value": "10485760"
+        },
+        {
+          "name": "S3_ALLOWED_CONTENT_TYPES",
+          "value": "application/pdf,image/jpeg,image/png,image/webp,text/plain,text/markdown,application/json,text/csv"
         }
       ],
       "secrets": [
@@ -63,6 +83,10 @@
         {
           "name": "GOOGLE_MAPS_API_KEY",
           "valueFrom": "<secrets-manager-google-maps-api-key-arn>"
+        },
+        {
+          "name": "S3_DOCUMENT_KMS_KEY_ID",
+          "valueFrom": "<secrets-manager-s3-document-kms-key-id-arn>"
         }
       ],
       "healthCheck": {

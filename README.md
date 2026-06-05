@@ -6,7 +6,7 @@ AI Travel Planner is a 3-tier travel planning application:
 - **Application tier**: one FastAPI monolith backend
 - **Data tier**: one PostgreSQL database
 
-The backend owns authentication, user preferences, trips, expenses, AI travel assistance, weather, hotels, and places APIs.
+The backend owns authentication, user preferences, trips, expenses, encrypted document storage, AI travel assistance, weather, hotels, and places APIs.
 
 ## Architecture
 
@@ -63,6 +63,8 @@ The app runs without external API keys by returning deterministic local developm
 - User profile and travel preference management
 - Trip creation, listing, editing, deletion, and history
 - Expense tracking per trip
+- Private trip document vault using S3 presigned URLs and SSE-KMS
+- AI assistant file attachments stored in S3 with KMS encryption
 - Budget summary across saved trips
 - AI itinerary generation
 - AI travel chat assistant
@@ -93,7 +95,9 @@ More feature details are in [docs/FEATURES.md](docs/FEATURES.md).
 | Backend | Passlib/bcrypt | Password hashing |
 | Backend | SlowAPI | API rate limiting |
 | Backend | HTTPX | External API calls to AI/weather/place providers |
+| Backend | Boto3 | S3 presigned URLs and object verification |
 | Database | PostgreSQL | Persistent application data |
+| Object Storage | Amazon S3 + AWS KMS | Private encrypted trip documents and chat attachments |
 | Runtime | Docker Compose | Local 3-tier orchestration |
 
 ## Request Flow
@@ -147,6 +151,12 @@ GROQ_API_KEY=
 OPENWEATHER_API_KEY=
 GEOAPIFY_API_KEY=
 GOOGLE_MAPS_API_KEY=
+AWS_REGION=us-east-1
+S3_DOCUMENT_BUCKET=
+S3_DOCUMENT_KMS_KEY_ID=
+S3_PRESIGNED_URL_EXPIRES_SECONDS=900
+S3_MAX_UPLOAD_BYTES=10485760
+S3_ALLOWED_CONTENT_TYPES=application/pdf,image/jpeg,image/png,image/webp,text/plain,text/markdown,application/json,text/csv
 ```
 
 ## Run Everything
@@ -190,6 +200,7 @@ Tables:
 - `preferences`
 - `trips`
 - `expenses`
+- `travel_documents`
 
 Alembic migrations run automatically when the backend container starts.
 
@@ -215,6 +226,8 @@ Main route groups:
 - `/api/users/*`
 - `/api/trips/*`
 - `/api/expenses/*`
+- `/api/trips/{trip_id}/documents/*`
+- `/api/documents/chat/*`
 - `/api/trip-history`
 - `/api/ai/*`
 - `/api/weather/*`
@@ -262,6 +275,7 @@ AWS deployment assets are in [deploy/aws/README.md](deploy/aws/README.md). The p
 - ECS Fargate for the backend container
 - RDS PostgreSQL for the database
 - S3 + CloudFront for the React frontend
+- Private S3 bucket with a customer-managed KMS key for trip documents and chat attachments
 - AWS Secrets Manager for `DATABASE_URL`, `JWT_SECRET_KEY`, and external API keys
 - An Application Load Balancer exposing the backend
 
