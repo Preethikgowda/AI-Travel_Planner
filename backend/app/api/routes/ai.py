@@ -19,7 +19,7 @@ from app.schemas.ai import (
     PackingListRequest,
     PackingListResponse,
 )
-from app.services.groq_client import TravelAIService
+from app.services.ai_service import TravelAIService
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 ai_service = TravelAIService()
