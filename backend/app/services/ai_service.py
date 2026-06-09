@@ -150,33 +150,55 @@ class TravelAIService:
     # ------------------------------------------------------------------ #
 
     async def _complete_json(self, prompt: str, fallback: dict[str, Any]) -> dict[str, Any]:
-        """Try Bedrock Converse API first, then Groq, then return fallback."""
+        """Try Bedrock Converse API first, then Groq, then raise error."""
+
+        bedrock_enabled = getattr(settings, "enable_bedrock", False)
+        bedrock_model = getattr(settings, "bedrock_model_id", "")
+        groq_key = settings.groq_api_key or ""
+
+        logger.info(
+            "AI dispatch: enable_bedrock=%s, bedrock_model_id=%s, groq_key_set=%s (len=%d, value_preview=%s)",
+            bedrock_enabled, bedrock_model, bool(groq_key), len(groq_key),
+            groq_key[:8] + "..." if len(groq_key) > 8 else groq_key,
+        )
 
         # --- Bedrock (primary) ---
-        if getattr(settings, "enable_bedrock", False) and getattr(settings, "bedrock_model_id", ""):
+        if bedrock_enabled and bedrock_model:
+            logger.info("Attempting Bedrock Converse with model=%s region=%s",
+                        bedrock_model, getattr(settings, "bedrock_region", None) or settings.aws_region)
             try:
                 result = await asyncio.to_thread(self._invoke_bedrock_converse, prompt)
                 if isinstance(result, dict):
+                    logger.info("Bedrock returned valid dict with keys: %s", list(result.keys()))
                     return result
                 if isinstance(result, str):
                     try:
-                        return self._parse_json(result)
-                    except Exception:
-                        logger.warning("Bedrock returned unparseable response, falling back")
-                        pass
+                        parsed = self._parse_json(result)
+                        logger.info("Bedrock returned string, parsed to dict with keys: %s", list(parsed.keys()))
+                        return parsed
+                    except Exception as parse_exc:
+                        logger.error("Bedrock returned unparseable string: %s — error: %s", result[:200], parse_exc)
             except Exception as exc:
-                logger.warning("Bedrock invocation failed: %s — falling back to Groq", exc)
+                logger.error("Bedrock invocation FAILED: %s", exc, exc_info=True)
+        else:
+            logger.warning("Bedrock SKIPPED: enable_bedrock=%s, bedrock_model_id='%s'", bedrock_enabled, bedrock_model)
 
         # --- Groq (fallback) ---
-        if settings.groq_api_key and settings.groq_api_key not in ("", "use-bedrock"):
+        if groq_key and groq_key not in ("", "use-bedrock"):
+            logger.info("Attempting Groq with model=%s", settings.groq_model)
             try:
-                return await self._invoke_groq(prompt)
+                result = await self._invoke_groq(prompt)
+                logger.info("Groq returned valid result with keys: %s", list(result.keys()) if isinstance(result, dict) else type(result))
+                return result
             except Exception as exc:
-                logger.warning("Groq invocation failed: %s", exc)
+                logger.error("Groq invocation FAILED: %s", exc, exc_info=True)
+        else:
+            logger.warning("Groq SKIPPED: groq_api_key='%s'", groq_key[:8] + "..." if len(groq_key) > 8 else groq_key)
 
+        logger.error("ALL AI providers failed — returning 503")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI generation failed: No valid AI providers configured or all providers failed (e.g. Bedrock model access not enabled). Please verify AWS Bedrock model access in the console."
+            detail="AI generation failed. All providers (Bedrock, Groq) failed. Check server logs for details."
         )
 
     def _invoke_bedrock_converse(self, prompt: str, max_retries: int = 2) -> dict[str, Any] | str:
@@ -211,7 +233,7 @@ class TravelAIService:
                     system=[{"text": system_prompt}],
                     messages=messages,
                     inferenceConfig={
-                        "maxTokens": 4096,
+                        "maxTokens": 2048,
                         "temperature": 0.35,
                         "topP": 0.9,
                     },
