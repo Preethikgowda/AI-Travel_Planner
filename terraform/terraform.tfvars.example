@@ -1,0 +1,22 @@
+# Example root terraform.tfvars - copy to terraform.tfvars and fill sensitive values
+
+environment = "prod"
+aws_region  = "ap-south-1"
+
+# Optional: override tags
+common_tags = {
+  Project = "AI Travel Planner"
+  Owner   = "DevOps Team"
+}
+
+# Sensitive values should be provided securely (do not commit real secrets)
+# groq_api_key = ""
+# openweather_api_key = ""
+# geoapify_api_key = ""
+# google_maps_api_key = ""
+# jwt_secret_key = ""
+# rds_username = "ai_travel_admin"
+# rds_password = ""
+
+# Slack and webhook (optional)
+# slack_webhook_url = ""

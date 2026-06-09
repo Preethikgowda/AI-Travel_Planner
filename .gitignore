@@ -38,3 +38,12 @@ docker-compose.override.yml
 Thumbs.db
 .idea/
 .vscode/
+
+# Terraform
+**/license.txt
+**/.terraform/
+**/*.tfvars
+**/tfplan
+**/*.tfstate*
+**/.terraform.lock.hcl
+

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     google_maps_api_key: str = ""
     request_timeout_seconds: float = 20.0
     aws_region: str = "us-east-1"
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
+    sns_topic_arn: str = ""
     s3_document_bucket: str = ""
     s3_document_kms_key_id: str = ""
     s3_presigned_url_expires_seconds: int = 900
