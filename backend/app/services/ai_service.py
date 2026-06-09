@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
+from fastapi import HTTPException, status
 
 from app.core.config import settings
 from app.schemas.ai import (
@@ -171,9 +172,12 @@ class TravelAIService:
             try:
                 return await self._invoke_groq(prompt)
             except Exception as exc:
-                logger.warning("Groq invocation failed: %s — using local fallback", exc)
+                logger.warning("Groq invocation failed: %s", exc)
 
-        return fallback
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI generation failed: No valid AI providers configured or all providers failed (e.g. Bedrock model access not enabled). Please verify AWS Bedrock model access in the console."
+        )
 
     def _invoke_bedrock_converse(self, prompt: str, max_retries: int = 2) -> dict[str, Any] | str:
         """Invoke Bedrock using the model-agnostic Converse API.
