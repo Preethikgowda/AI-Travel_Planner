@@ -2,6 +2,7 @@ from functools import lru_cache
 import json
 import base64
 from typing import Any
+from urllib.parse import quote_plus
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -120,11 +121,14 @@ class Settings(BaseSettings):
                     host = self.rds_endpoint or db_secret.get("host") or db_secret.get("host_port")
                     dbname = db_secret.get("db_name") or db_secret.get("database") or "ai_travel"
                     if username and password and host:
+                        # URL-encode username and password to handle special characters
+                        enc_user = quote_plus(username)
+                        enc_pass = quote_plus(password)
                         # Ensure we don't append port twice if host already contains it
                         if ":" in host:
-                            self.database_url = f"postgresql+psycopg://{username}:{password}@{host}/{dbname}"
+                            self.database_url = f"postgresql+psycopg://{enc_user}:{enc_pass}@{host}/{dbname}"
                         else:
-                            self.database_url = f"postgresql+psycopg://{username}:{password}@{host}:5432/{dbname}"
+                            self.database_url = f"postgresql+psycopg://{enc_user}:{enc_pass}@{host}:5432/{dbname}"
             except Exception:
                 # Avoid failing startup if secrets cannot be fetched; we'll validate later for production.
                 pass
