@@ -120,7 +120,11 @@ class Settings(BaseSettings):
                     host = self.rds_endpoint or db_secret.get("host") or db_secret.get("host_port")
                     dbname = db_secret.get("db_name") or db_secret.get("database") or "ai_travel"
                     if username and password and host:
-                        self.database_url = f"postgresql+psycopg://{username}:{password}@{host}:5432/{dbname}"
+                        # Ensure we don't append port twice if host already contains it
+                        if ":" in host:
+                            self.database_url = f"postgresql+psycopg://{username}:{password}@{host}/{dbname}"
+                        else:
+                            self.database_url = f"postgresql+psycopg://{username}:{password}@{host}:5432/{dbname}"
             except Exception:
                 # Avoid failing startup if secrets cannot be fetched; we'll validate later for production.
                 pass
